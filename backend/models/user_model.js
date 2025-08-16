@@ -13,9 +13,18 @@ const userSchema = new mongoose.Schema({
         validate: [validator.isEmail, "Please enter a valid email"]
     },
     phone: {
-        type: String,
-        required: true,
-        unique: true
+        type: String,  // store phone as plain string
+        required: true
+    },
+    photo: {
+        public_id: {
+            type: String,
+            required: true
+        },
+        url: {
+            type: String,
+            required: true
+        }
     },
     education: {
         type: String,
