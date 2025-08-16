@@ -1,6 +1,6 @@
 import { User } from "../models/user_model.js";
 import { v2 as cloudinary } from "cloudinary";
-
+import bcrypt from "bcrypt";
 export const register = async (req, res) => {
   if (!req.files || Object.keys(req.files).length === 0) {
     return res.status(400).json({ message: "User photo is required" });
@@ -41,11 +41,15 @@ export const register = async (req, res) => {
       return res.status(500).json({ message: "Image upload failed" });
     }
 
+    const saltRounds=10;
+    const hashedPassword=await bcrypt.hash(password,saltRounds);
+
+
     // Create and save new user
     const newUser = new User({
       email,
       name,
-      password,
+      password:hashedPassword,
       phone,
       education,
       role,
