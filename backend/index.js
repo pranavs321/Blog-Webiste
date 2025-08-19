@@ -3,7 +3,9 @@ import dotenv from "dotenv";
 import mongoose from "mongoose";
 import fileUpload from "express-fileupload";
 import { v2 as cloudinary } from 'cloudinary';
+
 import userRoute from "./routes/user_route.js";
+import blogRoute from "./routes/blog_route.js";
 
 const app = express();
 app.use(express.json());
@@ -39,6 +41,7 @@ try{
 
 //defining routes
 app.use("/api/users",userRoute);
+app.use("/api/blogs",blogRoute);
 app.listen(port, () => {
   console.log(`Server is running port ${port}`)
 })
