@@ -71,3 +71,60 @@ export const register = async (req, res) => {
       .json({ message: "Server error", error: err.message });
   }
 };
+
+export const login = async (req, res) => {
+  const { email, password, role } = req.body;
+
+  try {
+    if (!email || !password || !role) {
+      return res.status(400).json({ message: "Please fill required fields" });
+    }
+
+    const user = await User.findOne({ email }).select("+password role name email");
+    if (!user) {
+      return res.status(400).json({ message: "Invalid email or password" });
+    }
+
+    if (!user.password) {
+      return res.status(400).json({ message: "User password is missing" });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: "Invalid email or password" });
+    }
+
+    if (user.role !== role) {
+      return res.status(400).json({ message: `Given role ${role} not found` });
+    }
+
+    return res.status(200).json({
+      message: "User logged in successfully",
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+export const logout = (req, res) => {
+  // If you are using sessions
+  if (req.session) {
+    req.session.destroy(err => {
+      if (err) {
+        return res.status(500).json({ message: "Could not log out. Try again." });
+      } else {
+        return res.status(200).json({ message: "Logged out successfully" });
+      }
+    });
+  } else {
+    // If no sessions, just respond
+    return res.status(200).json({ message: "Logged out successfully" });
+  }
+};
