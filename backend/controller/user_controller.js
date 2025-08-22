@@ -1,130 +1,83 @@
-import { User } from "../models/user_model.js";
-import { v2 as cloudinary } from "cloudinary";
-import bcrypt from "bcrypt";
+import User from "../models/user_model.js";
+import cloudinary from "../utils/cloudinary.js";
+import sendToken from "../utils/send_token.js";
+
+// REGISTER
 export const register = async (req, res) => {
-  if (!req.files || Object.keys(req.files).length === 0) {
-    return res.status(400).json({ message: "User photo is required" });
-  }
-
-  const { photo } = req.files;
-  const allowedFormats = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
-
-  if (!allowedFormats.includes(photo.mimetype)) {
-    return res.status(400).json({ message: "Invalid image format" });
-  }
-
-  const { email, name, password, phone, education, role } = req.body;
-
-  if (!email || !name || !password || !phone || !education || !role) {
-    return res.status(400).json({ message: "All fields are required" });
-  }
-
   try {
-    // Check if user already exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res
-        .status(400)
-        .json({ message: "User already exists with this email" });
+    const { name, email, password, role, phone, education } = req.body;
+
+    if (!name || !email || !password) {
+      return res.status(400).json({ message: "name, email, password are required" });
     }
 
-    // Upload to Cloudinary
-    const cloudinaryResponse = await cloudinary.uploader.upload(
-      photo.tempFilePath
-    );
+    const exists = await User.findOne({ email });
+    if (exists) return res.status(400).json({ message: "User already exists" });
 
-    if (!cloudinaryResponse || cloudinaryResponse.error) {
-      console.error(
-        "Cloudinary upload error:",
-        cloudinaryResponse.error || "Unknown error"
-      );
-      return res.status(500).json({ message: "Image upload failed" });
+    // optional photo via file upload or base64
+    let photoData = {};
+    if (req.files?.photo) {
+      const uploaded = await cloudinary.uploader.upload(req.files.photo.tempFilePath);
+      photoData = { public_id: uploaded.public_id, url: uploaded.secure_url };
+    } else if (req.body.photoBase64) {
+      const uploaded = await cloudinary.uploader.upload(req.body.photoBase64);
+      photoData = { public_id: uploaded.public_id, url: uploaded.secure_url };
     }
 
-    const saltRounds=10;
-    const hashedPassword=await bcrypt.hash(password,saltRounds);
-
-
-    // Create and save new user
-    const newUser = new User({
-      email,
+    const user = await User.create({
       name,
-      password:hashedPassword,
+      email,
+      password,
+      role: role || "user",
       phone,
       education,
-      role,
-      photo: {
-        public_id: cloudinaryResponse.public_id,
-        url: cloudinaryResponse.secure_url,
-      },
+      photo: photoData,
     });
 
-    await newUser.save();
-
-    return res
-      .status(201)
-      .json({ message: "User registered successfully", newUser });
+    return sendToken(user, res, "User registered successfully");
   } catch (err) {
-    console.error("Error in register:", err);
-    return res
-      .status(500)
-      .json({ message: "Server error", error: err.message });
-  }
-};
-
-export const login = async (req, res) => {
-  const { email, password, role } = req.body;
-
-  try {
-    if (!email || !password || !role) {
-      return res.status(400).json({ message: "Please fill required fields" });
-    }
-
-    const user = await User.findOne({ email }).select("+password role name email");
-    if (!user) {
-      return res.status(400).json({ message: "Invalid email or password" });
-    }
-
-    if (!user.password) {
-      return res.status(400).json({ message: "User password is missing" });
-    }
-
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(400).json({ message: "Invalid email or password" });
-    }
-
-    if (user.role !== role) {
-      return res.status(400).json({ message: `Given role ${role} not found` });
-    }
-
-    return res.status(200).json({
-      message: "User logged in successfully",
-      user: {
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-      },
-    });
-  } catch (error) {
-    console.log(error);
+    console.error("Register error:", err.message);
     return res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
-export const logout = (req, res) => {
-  // If you are using sessions
-  if (req.session) {
-    req.session.destroy(err => {
-      if (err) {
-        return res.status(500).json({ message: "Could not log out. Try again." });
-      } else {
-        return res.status(200).json({ message: "Logged out successfully" });
-      }
-    });
-  } else {
-    // If no sessions, just respond
-    return res.status(200).json({ message: "Logged out successfully" });
+// LOGIN
+export const login = async (req, res) => {
+  try {
+    const { email, password, role } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ message: "email and password are required" });
+    }
+
+    const user = await User.findOne({ email }).select("+password");
+    if (!user) return res.status(400).json({ message: "Invalid email or password" });
+
+    const match = await user.comparePassword(password);
+    if (!match) return res.status(400).json({ message: "Invalid email or password" });
+
+    if (role && user.role !== role) {
+      return res.status(400).json({ message: `Given role ${role} not found` });
+    }
+
+    return sendToken(user, res, "User logged in successfully");
+  } catch (err) {
+    console.error("Login error:", err.message);
+    return res.status(500).json({ error: "Internal Server Error" });
   }
+};
+
+// LOGOUT
+export const logout = (_req, res) => {
+  res.clearCookie("jwt", {
+    httpOnly: true,
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+  });
+  return res.status(200).json({ message: "Logged out successfully" });
+};
+
+// PROFILE (example)
+export const myProfile = async (req, res) => {
+  return res.status(200).json({ user: req.user });
 };

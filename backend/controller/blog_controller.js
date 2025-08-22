@@ -1,53 +1,43 @@
-import { Blog } from "../models/blog_model.js";
-import { v2 as cloudinary } from "cloudinary";
+import Blog from "../models/blog_model.js";
+import cloudinary from "../utils/cloudinary.js";
 
+// CREATE BLOG (auth + admin)
 export const createBlog = async (req, res) => {
-  // Check if blogImage exists
-  if (!req.files || !req.files.blogImage) {
-    return res.status(400).json({ message: "Blog image is required" });
-  }
-
-  const { blogImage } = req.files;
-  const allowedFormats = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
-
-  // Validate image format
-  if (!allowedFormats.includes(blogImage.mimetype)) {
-    return res.status(400).json({ message: "Invalid image format" });
-  }
-
-  const { title, category, about } = req.body;
-
-  // Validate required fields
-  if (!title || !category || !about) {
-    return res.status(400).json({ message: "Title, category, and about are required" });
-  }
-
   try {
-    // Upload image to Cloudinary
-    const cloudinaryResponse = await cloudinary.uploader.upload(blogImage.tempFilePath);
+    const { title, category, about } = req.body;
 
-    if (!cloudinaryResponse || cloudinaryResponse.error) {
-      console.error("Cloudinary upload error:", cloudinaryResponse.error || "Unknown error");
-      return res.status(500).json({ message: "Image upload failed" });
+    if (!title || !category || !about) {
+      return res.status(400).json({ message: "title, category, about are required" });
     }
 
-    // Prepare blog data (without user info)
-    const blogData = {
-      title,
-      about,
-      category,
-      blogImage: {
-        public_id: cloudinaryResponse.public_id,
-        url: cloudinaryResponse.secure_url,
-      },
-    };
+    // image from file upload or base64
+    let imageData = {};
+    if (req.files?.blogImage) {
+      const uploaded = await cloudinary.uploader.upload(req.files.blogImage.tempFilePath);
+      imageData = { public_id: uploaded.public_id, url: uploaded.secure_url };
+    } else if (req.body.blogImageBase64) {
+      const uploaded = await cloudinary.uploader.upload(req.body.blogImageBase64);
+      imageData = { public_id: uploaded.public_id, url: uploaded.secure_url };
+    }
 
-    // Create and save the blog
-    const blog = await Blog.create(blogData);
+    const blog = await Blog.create({
+      title,
+      category,
+      about,
+      blogImage: imageData,
+      adminName: req.user?.name,
+      adminPhoto: req.user?.photo?.url,
+      createdBy: req.user?._id,
+    });
 
     return res.status(201).json({ message: "Blog created successfully", blog });
   } catch (err) {
-    console.error("Error in createBlog:", err);
-    return res.status(500).json({ message: "Server error", error: err.message });
+    console.error("Create blog error:", err.message);
+    return res.status(500).json({ error: "Internal Server Error" });
   }
+};
+
+export const getBlogs = async (_req, res) => {
+  const blogs = await Blog.find().sort({ createdAt: -1 });
+  return res.status(200).json({ blogs });
 };

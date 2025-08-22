@@ -1,50 +1,53 @@
 import mongoose from "mongoose";
-import validator from "validator";
+import bcrypt from "bcryptjs";
 
-const userSchema = new mongoose.Schema({
+const userSchema = new mongoose.Schema(
+  {
     name: {
-        type: String,
-        required: true
+      type: String,
+      required: [true, "Please enter your name"],
     },
     email: {
-        type: String,
-        required: true,
-        unique: true,
-        validate: [validator.isEmail, "Please enter a valid email"]
-    },
-    phone: {
-        type: String,  // store phone as plain string
-        required: true
-    },
-    photo: {
-        public_id: {
-            type: String,
-            required: true
-        },
-        url: {
-            type: String,
-            required: true
-        }
-    },
-    education: {
-        type: String,
-        required: true
-    },
-    role: {
-        type: String,
-        required: true,
-        enum: ["user", "admin"]
+      type: String,
+      required: [true, "Please enter your email"],
+      unique: true,
     },
     password: {
-        type: String,
-        required: true,
-        select: false,
-        minlength: 8
+      type: String,
+      required: [true, "Please enter your password"],
+      minlength: 6,
+      select: false, // hide by default
     },
-    createdAt: {
-        type: Date,
-        default: Date.now
-    }
+    role: {
+      type: String,
+      enum: ["user", "admin"],
+      default: "user",
+    },
+    phone: {
+      type: String,
+    },
+    education: {
+      type: String,
+    },
+    photo: {
+      public_id: String,
+      url: String,
+    },
+  },
+  { timestamps: true }
+);
+
+// hash password
+userSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) return next();
+  this.password = await bcrypt.hash(this.password, 10);
+  next();
 });
 
-export const User = mongoose.model("User", userSchema);
+// compare password
+userSchema.methods.comparePassword = function (candidate) {
+  return bcrypt.compare(candidate, this.password);
+};
+
+const User = mongoose.model("User", userSchema);
+export default User;
