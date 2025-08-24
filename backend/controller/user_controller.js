@@ -2,7 +2,6 @@ import User from "../models/user_model.js";
 import cloudinary from "../utils/cloudinary.js";
 import sendToken from "../utils/send_token.js";
 
-// REGISTER
 export const register = async (req, res) => {
   try {
     const { name, email, password, role, phone, education } = req.body;
@@ -41,7 +40,7 @@ export const register = async (req, res) => {
   }
 };
 
-// LOGIN
+
 export const login = async (req, res) => {
   try {
     const { email, password, role } = req.body;
@@ -66,7 +65,7 @@ export const login = async (req, res) => {
   }
 };
 
-// LOGOUT
+
 export const logout = (_req, res) => {
   res.clearCookie("jwt", {
     httpOnly: true,
@@ -77,7 +76,11 @@ export const logout = (_req, res) => {
   return res.status(200).json({ message: "Logged out successfully" });
 };
 
-// PROFILE (example)
 export const myProfile = async (req, res) => {
   return res.status(200).json({ user: req.user });
+};
+
+export const getAdmins=async (req,res) => {
+  const admin=await User.find({role:"admin"});
+  res.status(200).json(admin);
 };
