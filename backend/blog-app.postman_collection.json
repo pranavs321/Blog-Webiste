@@ -1,0 +1,72 @@
+{
+  "info": {
+    "name": "Blog App",
+    "_postman_id": "b2c8a83b-1234-5678-9876-exampleid",
+    "description": "Collection for Blog App with Login and Blogs",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Login",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"par@example.com\",\n  \"password\": \"yourpassword\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:4001/api/users/login",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "4001",
+          "path": ["api", "users", "login"]
+        }
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "let res = pm.response.json();",
+              "if (res.token) {",
+              "    pm.environment.set(\"token\", res.token);",
+              "    console.log(\"✅ Token saved:\", res.token);",
+              "} else {",
+              "    console.log(\"❌ No token found in response\");",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Get All Blogs",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:4001/api/blogs/all-blogs",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "4001",
+          "path": ["api", "blogs", "all-blogs"]
+        }
+      },
+      "response": []
+    }
+  ]
+}

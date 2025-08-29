@@ -5,25 +5,16 @@ const sendToken = (user, res, message = "Success") => {
     expiresIn: process.env.JWT_EXPIRE,
   });
 
-    
-  const isProd = process.env.NODE_ENV === "production";
-  res.cookie("jwt", token, {
-    httpOnly: true,
-    secure: isProd,
-    sameSite: isProd ? "none" : "lax",
-    maxAge: 24 * 60 * 60 * 1000, 
-    path: "/",
-  });
-
+  // No cookies! Only token in JSON response
   return res.status(200).json({
     success: true,
     message,
-    token, 
+    token,
     user: {
       _id: user._id,
       name: user.name,
       email: user.email,
-      role: user.role,  
+      role: user.role,
       photo: user.photo?.url || null,
     },
   });

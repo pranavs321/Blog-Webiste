@@ -22,9 +22,9 @@ app.use(cookieParser());
 // CORS (allow cookies)
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL,
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+    origin: "http://localhost:5173", // your frontend
+    credentials: true,               // allow cookies
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"] ,
   })
 );
 
