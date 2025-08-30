@@ -1,6 +1,7 @@
+import mongoose from "mongoose";
 import Blog from "../models/blog_model.js";
-import cloudinary from "../utils/cloudinary.js";
 
+// CREATE BLOG
 export const createBlog = async (req, res) => {
   try {
     const { title, category, about } = req.body;
@@ -9,25 +10,84 @@ export const createBlog = async (req, res) => {
       return res.status(400).json({ message: "title, category, about are required" });
     }
 
-    // No file/image handling
     const blog = await Blog.create({
       title,
       category,
       about,
       adminName: req.user?.name,
-      adminPhoto: req.user?.photo?.url,
+      adminPhoto: req.user?.photo?.url || "",
       createdBy: req.user?._id,
     });
 
     return res.status(201).json({ message: "Blog created successfully", blog });
   } catch (err) {
     console.error("Create blog error:", err.message);
-    return res.status(500).json({ error: "Internal Server Error" });
+    return res.status(500).json({ error: err.message });
   }
 };
 
+// DELETE BLOG
+export const deleteBlog = async (req, res) => {
+  try {
+    const { id } = req.params;
 
-export const getBlogs = async (_req, res) => {
-  const blogs = await Blog.find().sort({ createdAt: -1 });
-  return res.status(200).json({ blogs });
+    const blog = await Blog.findById(id);
+    if (!blog) {
+      return res.status(404).json({ message: "Blog not found" });
+    }
+
+    await Blog.findByIdAndDelete(id);
+    res.status(200).json({ message: "Blog deleted successfully" });
+  } catch (error) {
+    console.error("Delete blog error:", error.message);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+// GET ALL BLOGS
+export const getAllBlogs = async (_req, res) => {
+  try {
+    const blogs = await Blog.find().sort({ createdAt: -1 });
+    res.status(200).json(blogs);
+  } catch (error) {
+    console.error("Get all blogs error:", error.message);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+// GET SINGLE BLOG
+export const getSingleBlogs = async (req, res) => {
+  try {
+    const blog = await Blog.findById(req.params.id);
+    if (!blog) {
+      return res.status(404).json({ message: "Blog not found" });
+    }
+    res.json(blog);
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// GET MY BLOGS
+export const getMyBlogs = async (req, res) => {
+  try {
+    const createdBy = req.user._id;
+    const myBlogs = await Blog.find({ createdBy });
+    res.status(200).json(myBlogs);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching blogs", error: error.message });
+  }
+};
+
+// UPDATE BLOG
+export const updateBlog = async (req, res) => {
+  const { id } = req.params;
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ message: "Invalid Blog ID" });
+  }
+  const updateBlog = await Blog.findByIdAndUpdate(id, req.body, { new: true });
+  if (!updateBlog) {
+    return res.status(404).json({ message: "Blog not found" });
+  }
+  res.status(200).json(updateBlog);
 };

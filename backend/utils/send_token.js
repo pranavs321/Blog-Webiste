@@ -5,7 +5,7 @@ const sendToken = (user, res, message = "Success") => {
     expiresIn: process.env.JWT_EXPIRE,
   });
 
-  // No cookies! Only token in JSON response
+  // ✅ return JSON (not cookie)
   return res.status(200).json({
     success: true,
     message,
@@ -15,7 +15,8 @@ const sendToken = (user, res, message = "Success") => {
       name: user.name,
       email: user.email,
       role: user.role,
-      photo: user.photo?.url || null,
+      phone: user.phone,
+      education: user.education,
     },
   });
 };

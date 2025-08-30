@@ -1,52 +1,47 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
+import validator from "validator";
+import jwt from "jsonwebtoken";
 
 const userSchema = new mongoose.Schema(
   {
-    name: {
-      type: String,
-      required: [true, "Please enter your name"],
-    },
+    name: { type: String, required: true },
     email: {
       type: String,
-      required: [true, "Please enter your email"],
+      required: true,
       unique: true,
+      validate: [validator.isEmail, "Please enter a valid email"],
+    },
+    phone: { type: Number, required: true, unique: true },
+    education: { type: String, required: true },
+    role: {
+      type: String,
+      required: true,
+      enum: ["user", "admin"],
     },
     password: {
       type: String,
-      required: [true, "Please enter your password"],
-      minlength: 6,
-      select: false, // hide by default
+      required: true,
+      select: false,
+      minlength: 8,
     },
-    role: {
-      type: String,
-      enum: ["user", "admin"],
-      default: "user",
-    },
-    phone: {
-      type: String,
-    },
-    education: {
-      type: String,
-    },
-    photo: {
-      public_id: String,
-      url: String,
-    },
+    token: { type: String },
   },
   { timestamps: true }
 );
 
-// hash password
+// 🔒 hash password before saving
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
   this.password = await bcrypt.hash(this.password, 10);
   next();
 });
 
-// compare password
-userSchema.methods.comparePassword = function (candidate) {
-  return bcrypt.compare(candidate, this.password);
+// 🔑 compare password method
+userSchema.methods.getJwtToken = function () {
+  return jwt.sign({ id: this._id }, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRE || "1d",
+  });
 };
 
 const User = mongoose.model("User", userSchema);
