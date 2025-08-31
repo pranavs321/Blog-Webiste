@@ -8,5 +8,5 @@ router.post("/register", register);
 router.post("/login", login);
 router.post("/logout", isAuthenticated, logout);
 router.get("/me", isAuthenticated, myProfile);
-router.get("/admins",getAdmins)
+router.get("/admins",isAuthenticated,getAdmins)
 export default router;

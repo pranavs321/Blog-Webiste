@@ -3,17 +3,37 @@ import User from "../models/user_model.js";
 
 export const isAuthenticated = async (req, res, next) => {
   try {
-    const token = req.cookies?.jwt;
-    if (!token) return res.status(401).json({ error: "User not authenticated" });
+    let token;
+
+    if (
+      req.headers.authorization &&
+      req.headers.authorization.startsWith("Bearer")
+    ) {
+      token = req.headers.authorization.split(" ")[1];
+      console.log("✅ Token found in Authorization header");
+    }
+
+    if (!token && req.cookies?.jwt) {
+      token = req.cookies.jwt;
+      console.log("✅ Token found in cookies (fallback)");
+    }
+
+    if (!token) {
+      console.log("❌ No token found, blocking request");
+      return res.status(401).json({ error: "User not authenticated" });
+    }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user = await User.findById(decoded.id).select("-password");
-    if (!user) return res.status(404).json({ error: "User not found" });
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
 
     req.user = user;
+    console.log(`🎉 Auth success via token for user: ${user.email}`);
     next();
   } catch (err) {
-    console.error("Auth error:", err.message);
+    console.error("❌ Invalid token:", err.message);
     return res.status(401).json({ error: "Invalid token" });
   }
 };
